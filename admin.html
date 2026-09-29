@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#101d35">
+  <title>Admin · Sufian Technology</title><link rel="icon" href="/assets/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="admin.css"><script src="supabase-config.js"></script><script src="admin.js" defer></script>
+</head>
+<body>
+  <header class="admin-header"><a class="brand" href="/"><span class="brand-mark"><i></i><i></i><i></i></span><span>Sufian <b>Technology</b></span></a><a class="back-link" href="/">View website ↗</a></header>
+  <main class="admin-main">
+    <section class="login-card" id="login-panel"><div class="kicker">CONTENT STUDIO · ADMIN</div><h1>Welcome back.</h1><p>Sign in to manage videos, books and updates shown on your website.</p><form id="login-form"><label for="email">Admin email</label><input id="email" name="email" type="email" autocomplete="username" required><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="primary-button" type="submit">Sign in <span>↗</span></button><p class="form-message" id="login-message" role="status"></p></form><small>Only you can access this content studio.</small></section>
+    <section id="dashboard" hidden>
+      <div class="dashboard-heading"><div><div class="kicker">CONTENT STUDIO</div><h1>Your website,<br><span>kept fresh.</span></h1><p>Add and manage the content visitors see on your site.</p></div><button class="logout-button" id="logout" type="button">Sign out ↗</button></div>
+      <div class="dashboard-grid">
+        <section class="panel"><div class="panel-title"><span class="panel-icon">▶</span><div><h2>YouTube videos</h2><p>Add a video to the Watch &amp; Learn section.</p></div></div><form class="content-form" data-type="videos"><label>Video title<input name="title" required maxlength="140" placeholder="A clear, helpful title"></label><label>YouTube link<input name="url" type="url" required placeholder="https://youtube.com/watch?v=..."></label><label>Short description<textarea name="description" rows="3" maxlength="1200" placeholder="What will viewers learn?"></textarea></label><button class="primary-button" type="submit">Add video <span>＋</span></button><p class="form-message" role="status"></p></form><div class="managed-list" data-list="videos"></div></section>
+        <section class="panel"><div class="panel-title"><span class="panel-icon book-icon">▤</span><div><h2>Bookshelf</h2><p>Add a book preview and let readers order through WhatsApp.</p></div></div><form class="content-form" data-type="books"><label>Book title<input name="title" required maxlength="140" placeholder="Book title"></label><label>Price or contact note<input name="price" required maxlength="80" placeholder="e.g. TZS 20,000 or Contact for price"></label><label>Description<textarea name="description" rows="2" maxlength="1200" placeholder="What is this book about?"></textarea></label><label>Reading preview<textarea name="preview" rows="4" maxlength="5000" placeholder="A short excerpt visitors can read"></textarea></label><button class="primary-button" type="submit">Add book <span>＋</span></button><p class="form-message" role="status"></p></form><div class="managed-list" data-list="books"></div></section>
+        <section class="panel"><div class="panel-title"><span class="panel-icon update-icon">✳</span><div><h2>Updates &amp; insights</h2><p>Share useful notes, announcements or future updates.</p></div></div><form class="content-form" data-type="updates"><label>Title<input name="title" required maxlength="140" placeholder="An update or idea"></label><label>Category<input name="category" maxlength="80" placeholder="AI tips, announcement, tutorial…"></label><label>Short note<textarea name="description" rows="4" maxlength="1200" placeholder="Write your update"></textarea></label><button class="primary-button" type="submit">Publish update <span>＋</span></button><p class="form-message" role="status"></p></form><div class="managed-list" data-list="updates"></div></section>
+      </div>
+      <aside class="admin-note"><b>Book orders:</b> The public site shows your book description and reading preview. Readers use WhatsApp to ask about or place an order. Payment and delivery are arranged with you directly; online checkout is not connected.</aside>
+    </section>
+  </main>
+</body>
+</html>
