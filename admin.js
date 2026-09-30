@@ -50,8 +50,38 @@ async function dataRequest(path, options = {}) {
   return rawRequest(`/rest/v1/${path}`, options, token);
 }
 
+async function uploadBookCover(file) {
+  if (!file) return '';
+  const types = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+  if (!types[file.type]) throw new Error('Choose a JPG, PNG or WebP image.');
+  if (file.size > 5 * 1024 * 1024) throw new Error('Cover image must be 5 MB or smaller.');
+  const objectPath = `${crypto.randomUUID()}.${types[file.type]}`;
+  const token = await freshAccessToken();
+  const response = await fetch(`${SUPABASE.url.replace(/\/$/, '')}/storage/v1/object/book-covers/${objectPath}`, {
+    method: 'POST',
+    headers: { apikey: SUPABASE.publishableKey, Authorization: `Bearer ${token}`, 'Content-Type': file.type, 'x-upsert': 'false', 'cache-control': '3600' },
+    body: file,
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(errorMessage(result));
+  return `${SUPABASE.url.replace(/\/$/, '')}/storage/v1/object/public/book-covers/${objectPath}`;
+}
+
+async function removeBookCover(url) {
+  if (!url) return;
+  const marker = '/storage/v1/object/public/book-covers/';
+  const pathname = new URL(url).pathname;
+  const index = pathname.indexOf(marker);
+  if (index < 0) return;
+  const objectPath = decodeURIComponent(pathname.slice(index + marker.length));
+  const token = await freshAccessToken();
+  await rawRequest('/storage/v1/object/book-covers', {
+    method: 'DELETE', body: JSON.stringify({ prefixes: [objectPath] }),
+  }, token);
+}
+
 async function loadItems() {
-  const items = await dataRequest('site_content?select=id,kind,title,created_at&order=created_at.desc');
+  const items = await dataRequest('site_content?select=id,kind,title,cover_url,created_at&order=created_at.desc');
   const listNames = { video: 'videos', book: 'books', update: 'updates' };
   for (const [kind, listName] of Object.entries(listNames)) {
     const list = document.querySelector(`[data-list="${listName}"]`);
@@ -66,7 +96,11 @@ async function loadItems() {
       const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove'; remove.setAttribute('aria-label', `Remove ${item.title}`);
       remove.addEventListener('click', async () => {
         if (!window.confirm(`Remove “${item.title}” from the website?`)) return;
-        try { await dataRequest(`site_content?id=eq.${encodeURIComponent(item.id)}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }); await loadItems(); }
+        try {
+          if (kind === 'book' && item.cover_url) await removeBookCover(item.cover_url);
+          await dataRequest(`site_content?id=eq.${encodeURIComponent(item.id)}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+          await loadItems();
+        }
         catch (error) { window.alert(error.message); }
       });
       row.append(title, remove); list.append(row);
@@ -105,7 +139,8 @@ document.querySelectorAll('.content-form').forEach((form) => {
     const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
     const kinds = { videos: 'video', books: 'book', updates: 'update' };
-    const item = { kind: kinds[form.dataset.type], title: fields.title, description: fields.description || '', category: fields.category || '', youtube_id: null, price: fields.price || '', preview: fields.preview || '', is_published: true };
+    const item = { kind: kinds[form.dataset.type], title: fields.title, description: fields.description || '', category: fields.category || '', youtube_id: null, price: '', author: fields.author || '', isbn: fields.isbn || '', format: fields.format || 'print', language: fields.language || 'English', price_amount: fields.price_amount ? Number(fields.price_amount) : null, currency: fields.currency || 'TZS', stock: fields.stock === '' ? null : Number(fields.stock), cover_url: '', preview: fields.preview || '', is_published: true };
+    if (item.kind === 'book') item.price = `${item.currency} ${Number(item.price_amount).toLocaleString('en-US')}`;
     if (item.kind === 'video') {
       try {
         const url = new URL(fields.url);
@@ -113,10 +148,17 @@ document.querySelectorAll('.content-form').forEach((form) => {
         if (!['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'].includes(url.hostname) || !/^[\w-]{11}$/.test(item.youtube_id || '')) throw new Error('Use a valid YouTube video link.');
       } catch (error) { message(form, error.message, true); button.disabled = false; return; }
     }
+    let uploadedCover = '';
     try {
+      if (item.kind === 'book') {
+        item.cover_url = uploadedCover = await uploadBookCover(form.querySelector('[name="cover"]').files[0]);
+      }
       await dataRequest('site_content', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(item) });
       form.reset(); message(form, 'Added to your website.'); await loadItems();
-    } catch (error) { message(form, error.message, true); }
+    } catch (error) {
+      if (uploadedCover) await removeBookCover(uploadedCover).catch(() => {});
+      message(form, error.message, true);
+    }
     finally { button.disabled = false; }
   });
 });
