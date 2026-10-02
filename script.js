@@ -169,6 +169,10 @@ async function loadPublishedContent() {
       updatesList.replaceChildren();
       updates.slice(0, 3).forEach((update) => {
         const card = makeElement('article', 'update-card');
+        if (update.cover_url) {
+          const image = document.createElement('img'); image.className = 'update-image'; image.src = update.cover_url; image.alt = update.title; image.loading = 'lazy';
+          card.append(image);
+        }
         card.append(makeElement('span', 'insight-tag', update.category || 'UPDATE'), makeElement('h3', '', update.title));
         if (update.description) card.append(makeElement('p', '', update.description));
         updatesList.append(card);

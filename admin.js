@@ -50,32 +50,32 @@ async function dataRequest(path, options = {}) {
   return rawRequest(`/rest/v1/${path}`, options, token);
 }
 
-async function uploadBookCover(file) {
+async function uploadImage(file, bucket) {
   if (!file) return '';
   const types = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
   if (!types[file.type]) throw new Error('Choose a JPG, PNG or WebP image.');
   if (file.size > 5 * 1024 * 1024) throw new Error('Cover image must be 5 MB or smaller.');
   const objectPath = `${crypto.randomUUID()}.${types[file.type]}`;
   const token = await freshAccessToken();
-  const response = await fetch(`${SUPABASE.url.replace(/\/$/, '')}/storage/v1/object/book-covers/${objectPath}`, {
+  const response = await fetch(`${SUPABASE.url.replace(/\/$/, '')}/storage/v1/object/${bucket}/${objectPath}`, {
     method: 'POST',
     headers: { apikey: SUPABASE.publishableKey, Authorization: `Bearer ${token}`, 'Content-Type': file.type, 'x-upsert': 'false', 'cache-control': '3600' },
     body: file,
   });
   const result = await response.json().catch(() => null);
   if (!response.ok) throw new Error(errorMessage(result));
-  return `${SUPABASE.url.replace(/\/$/, '')}/storage/v1/object/public/book-covers/${objectPath}`;
+  return `${SUPABASE.url.replace(/\/$/, '')}/storage/v1/object/public/${bucket}/${objectPath}`;
 }
 
-async function removeBookCover(url) {
+async function removeImage(url, bucket) {
   if (!url) return;
-  const marker = '/storage/v1/object/public/book-covers/';
+  const marker = `/storage/v1/object/public/${bucket}/`;
   const pathname = new URL(url).pathname;
   const index = pathname.indexOf(marker);
   if (index < 0) return;
   const objectPath = decodeURIComponent(pathname.slice(index + marker.length));
   const token = await freshAccessToken();
-  await rawRequest('/storage/v1/object/book-covers', {
+  await rawRequest(`/storage/v1/object/${bucket}`, {
     method: 'DELETE', body: JSON.stringify({ prefixes: [objectPath] }),
   }, token);
 }
@@ -97,7 +97,7 @@ async function loadItems() {
       remove.addEventListener('click', async () => {
         if (!window.confirm(`Remove “${item.title}” from the website?`)) return;
         try {
-          if (kind === 'book' && item.cover_url) await removeBookCover(item.cover_url);
+          if ((kind === 'book' || kind === 'update') && item.cover_url) await removeImage(item.cover_url, kind === 'book' ? 'book-covers' : 'update-images');
           await dataRequest(`site_content?id=eq.${encodeURIComponent(item.id)}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
           await loadItems();
         }
@@ -150,13 +150,14 @@ document.querySelectorAll('.content-form').forEach((form) => {
     }
     let uploadedCover = '';
     try {
-      if (item.kind === 'book') {
-        item.cover_url = uploadedCover = await uploadBookCover(form.querySelector('[name="cover"]').files[0]);
+      if (item.kind === 'book' || item.kind === 'update') {
+        const bucket = item.kind === 'book' ? 'book-covers' : 'update-images';
+        item.cover_url = uploadedCover = await uploadImage(form.querySelector('[name="cover"]').files[0], bucket);
       }
       await dataRequest('site_content', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(item) });
       form.reset(); message(form, 'Added to your website.'); await loadItems();
     } catch (error) {
-      if (uploadedCover) await removeBookCover(uploadedCover).catch(() => {});
+      if (uploadedCover) await removeImage(uploadedCover, item.kind === 'book' ? 'book-covers' : 'update-images').catch(() => {});
       message(form, error.message, true);
     }
     finally { button.disabled = false; }

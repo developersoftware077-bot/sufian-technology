@@ -112,3 +112,26 @@ create policy "Owner lists book covers"
     bucket_id = 'book-covers'
     and (select auth.jwt() ->> 'email') = 'developersoftware077@gmail.com'
   );
+
+-- Images attached to Updates & insights.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('update-images', 'update-images', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Owner uploads update images" on storage.objects;
+create policy "Owner uploads update images"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'update-images' and (select auth.jwt() ->> 'email') = 'developersoftware077@gmail.com');
+
+drop policy if exists "Owner removes update images" on storage.objects;
+create policy "Owner removes update images"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'update-images' and (select auth.jwt() ->> 'email') = 'developersoftware077@gmail.com');
+
+drop policy if exists "Owner lists update images" on storage.objects;
+create policy "Owner lists update images"
+  on storage.objects for select to authenticated
+  using (bucket_id = 'update-images' and (select auth.jwt() ->> 'email') = 'developersoftware077@gmail.com');
